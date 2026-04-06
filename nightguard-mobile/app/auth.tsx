@@ -1,6 +1,7 @@
 import { Image } from 'expo-image';
 import { useState } from 'react';
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -12,7 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { FirebaseAuthTest } from '@/components/FirebaseAuthTest';
+import { signInWithEmailPassword, signUpWithEmailPassword } from '@/lib/auth-actions';
 
 /** NightGuard dashboard-adjacent palette — layout is mobile-native, not web density */
 const C = {
@@ -86,8 +87,6 @@ export default function AuthScreen() {
           </View>
 
           {mode === 'login' ? <LoginForm /> : <SignupForm />}
-
-          {__DEV__ ? <FirebaseAuthTest /> : null}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -95,6 +94,23 @@ export default function AuthScreen() {
 }
 
 function LoginForm() {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const submit = async () => {
+    setError(null);
+    setLoading(true);
+    try {
+      await signInWithEmailPassword(email, password);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <View style={styles.formBlock}>
       <Text style={styles.formTitle}>Sign in</Text>
@@ -104,6 +120,8 @@ function LoginForm() {
         <Text style={styles.label}>Email</Text>
         <TextInput
           style={styles.input}
+          value={email}
+          onChangeText={setEmail}
           placeholder="you@venue.com"
           placeholderTextColor={C.textMuted}
           keyboardType="email-address"
@@ -112,6 +130,7 @@ function LoginForm() {
           autoComplete="email"
           textContentType="emailAddress"
           returnKeyType="next"
+          editable={!loading}
         />
       </View>
 
@@ -119,20 +138,36 @@ function LoginForm() {
         <Text style={styles.label}>Password</Text>
         <TextInput
           style={styles.input}
+          value={password}
+          onChangeText={setPassword}
           placeholder="••••••••"
           placeholderTextColor={C.textMuted}
           secureTextEntry
           autoComplete="password"
           textContentType="password"
           returnKeyType="done"
+          onSubmitEditing={() => void submit()}
+          editable={!loading}
         />
       </View>
 
+      {error ? <Text style={styles.formError}>{error}</Text> : null}
+
       <Pressable
-        style={({ pressed }) => [styles.primaryButton, pressed && styles.primaryPressed]}
+        style={({ pressed }) => [
+          styles.primaryButton,
+          (loading || pressed) && styles.primaryButtonBusy,
+          loading && styles.primaryButtonDisabled,
+        ]}
         accessibilityRole="button"
-        accessibilityLabel="Log in">
-        <Text style={styles.primaryLabel}>Log in</Text>
+        accessibilityLabel="Log in"
+        onPress={() => void submit()}
+        disabled={loading}>
+        {loading ? (
+          <ActivityIndicator color={C.text} />
+        ) : (
+          <Text style={styles.primaryLabel}>Log in</Text>
+        )}
       </Pressable>
 
       <Pressable
@@ -146,6 +181,33 @@ function LoginForm() {
 }
 
 function SignupForm() {
+  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const submit = async () => {
+    setError(null);
+    if (password !== confirmPassword) {
+      setError('Passwords do not match.');
+      return;
+    }
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters.');
+      return;
+    }
+    setLoading(true);
+    try {
+      await signUpWithEmailPassword(email, password);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <View style={styles.formBlock}>
       <Text style={styles.formTitle}>Create account</Text>
@@ -155,12 +217,15 @@ function SignupForm() {
         <Text style={styles.label}>Full name</Text>
         <TextInput
           style={styles.input}
+          value={fullName}
+          onChangeText={setFullName}
           placeholder="Alex Rivera"
           placeholderTextColor={C.textMuted}
           autoCapitalize="words"
           autoComplete="name"
           textContentType="name"
           returnKeyType="next"
+          editable={!loading}
         />
       </View>
 
@@ -168,6 +233,8 @@ function SignupForm() {
         <Text style={styles.label}>Email</Text>
         <TextInput
           style={styles.input}
+          value={email}
+          onChangeText={setEmail}
           placeholder="you@venue.com"
           placeholderTextColor={C.textMuted}
           keyboardType="email-address"
@@ -176,6 +243,7 @@ function SignupForm() {
           autoComplete="email"
           textContentType="emailAddress"
           returnKeyType="next"
+          editable={!loading}
         />
       </View>
 
@@ -183,12 +251,15 @@ function SignupForm() {
         <Text style={styles.label}>Password</Text>
         <TextInput
           style={styles.input}
+          value={password}
+          onChangeText={setPassword}
           placeholder="At least 8 characters"
           placeholderTextColor={C.textMuted}
           secureTextEntry
           autoComplete="new-password"
           textContentType="newPassword"
           returnKeyType="next"
+          editable={!loading}
         />
       </View>
 
@@ -196,25 +267,39 @@ function SignupForm() {
         <Text style={styles.label}>Confirm password</Text>
         <TextInput
           style={styles.input}
+          value={confirmPassword}
+          onChangeText={setConfirmPassword}
           placeholder="Repeat password"
           placeholderTextColor={C.textMuted}
           secureTextEntry
           autoComplete="new-password"
           textContentType="newPassword"
           returnKeyType="done"
+          onSubmitEditing={() => void submit()}
+          editable={!loading}
         />
       </View>
 
+      {error ? <Text style={styles.formError}>{error}</Text> : null}
+
       <Pressable
-        style={({ pressed }) => [styles.primaryButton, pressed && styles.primaryPressed]}
+        style={({ pressed }) => [
+          styles.primaryButton,
+          (loading || pressed) && styles.primaryButtonBusy,
+          loading && styles.primaryButtonDisabled,
+        ]}
         accessibilityRole="button"
-        accessibilityLabel="Create account">
-        <Text style={styles.primaryLabel}>Create account</Text>
+        accessibilityLabel="Create account"
+        onPress={() => void submit()}
+        disabled={loading}>
+        {loading ? (
+          <ActivityIndicator color={C.text} />
+        ) : (
+          <Text style={styles.primaryLabel}>Create account</Text>
+        )}
       </Pressable>
 
-      <Text style={styles.legalHint}>
-        By continuing you agree to your organization’s policies. (UI preview — no account is created.)
-      </Text>
+      <Text style={styles.legalHint}>By continuing you agree to your organization’s policies.</Text>
     </View>
   );
 }
@@ -312,6 +397,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: C.border,
   },
+  formError: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: '#F07A92',
+    marginBottom: 12,
+  },
   primaryButton: {
     minHeight: 52,
     marginTop: 8,
@@ -321,6 +412,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: '#3D4AE0',
+  },
+  primaryButtonBusy: {
+    opacity: 0.92,
+  },
+  primaryButtonDisabled: {
+    opacity: 0.65,
   },
   primaryPressed: {
     opacity: 0.92,
