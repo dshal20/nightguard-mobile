@@ -12,6 +12,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { FirebaseAuthTest } from '@/components/FirebaseAuthTest';
+
 /** NightGuard dashboard-adjacent palette — layout is mobile-native, not web density */
 const C = {
   bg: '#101018',
@@ -84,6 +86,8 @@ export default function AuthScreen() {
           </View>
 
           {mode === 'login' ? <LoginForm /> : <SignupForm />}
+
+          {__DEV__ ? <FirebaseAuthTest /> : null}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
