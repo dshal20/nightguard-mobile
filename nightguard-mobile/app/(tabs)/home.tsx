@@ -1,6 +1,9 @@
 import { Image } from 'expo-image';
-import { SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ambulance, Home, Settings, ShieldAlert, TriangleAlert, User } from 'lucide-react-native';
+
+import { NewReportModal } from '@/components/new-report/NewReportModal';
 
 type ActivityType = 'warning' | 'medical' | 'trespass';
 
@@ -64,8 +67,11 @@ function ActivityIcon({ type, color }: { type: ActivityType; color: string }) {
 }
 
 export default function HomeScreen() {
+  const [newReportOpen, setNewReportOpen] = useState(false);
+
   return (
     <SafeAreaView style={styles.safeArea}>
+      <NewReportModal visible={newReportOpen} onClose={() => setNewReportOpen(false)} />
       <View style={styles.container}>
         <ScrollView
           contentContainerStyle={styles.scrollContent}
@@ -80,10 +86,14 @@ export default function HomeScreen() {
                 contentFit="contain"
               />
             </View>
-            <View style={styles.newReportButton}>
+            <Pressable
+              onPress={() => setNewReportOpen(true)}
+              style={({ pressed }) => [styles.newReportButton, pressed && styles.newReportPressed]}
+              accessibilityRole="button"
+              accessibilityLabel="New report">
               <Text style={styles.newReportPlus}>＋</Text>
               <Text style={styles.newReportText}>New Report</Text>
-            </View>
+            </Pressable>
           </View>
 
           {/* Tonight's Operations header */}
@@ -206,9 +216,13 @@ export default function HomeScreen() {
 
           {/* Center "+" button */}
           <View style={styles.bottomNavIconWrapper}>
-            <View style={styles.bottomCenterButton}>
+            <Pressable
+              onPress={() => setNewReportOpen(true)}
+              style={({ pressed }) => [styles.bottomCenterButton, pressed && styles.newReportPressed]}
+              accessibilityRole="button"
+              accessibilityLabel="New report">
               <Text style={styles.bottomCenterPlus}>＋</Text>
-            </View>
+            </Pressable>
           </View>
 
           <View style={styles.bottomNavIconWrapper}>
@@ -248,8 +262,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   logo: {
-    width: 200,
-    height: 40,
+    width: 255,
+    height: 51,
   },
   logoText: {
     fontSize: 20,
@@ -276,6 +290,9 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '700',
+  },
+  newReportPressed: {
+    opacity: 0.88,
   },
   sectionHeader: {
     marginBottom: 16,
