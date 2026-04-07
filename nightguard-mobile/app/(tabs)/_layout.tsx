@@ -14,6 +14,9 @@ export default function TabLayout() {
       screenOptions={{
         tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
         headerShown: false,
+        /** Only the custom five-icon bar (`DashboardBottomNav`); hide the system tab strip. */
+        tabBarStyle: { display: 'none', height: 0 },
+        tabBarItemStyle: { display: 'none', height: 0, width: 0 },
         tabBarButton: HapticTab,
       }}>
       <Tabs.Screen
@@ -24,10 +27,10 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="explore"
+        name="incidents"
         options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+          title: 'Incidents',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="shield.fill" color={color} />,
         }}
       />
     </Tabs>
