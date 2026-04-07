@@ -1,4 +1,5 @@
 import { Image } from 'expo-image';
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ambulance, Home, Settings, ShieldAlert, TriangleAlert, User } from 'lucide-react-native';
@@ -67,6 +68,7 @@ function ActivityIcon({ type, color }: { type: ActivityType; color: string }) {
 }
 
 export default function HomeScreen() {
+  const router = useRouter();
   const [newReportOpen, setNewReportOpen] = useState(false);
 
   return (
@@ -229,7 +231,13 @@ export default function HomeScreen() {
             <User color="#FFFFFF" size={22} />
           </View>
           <View style={styles.bottomNavIconWrapper}>
-            <Settings color="#FFFFFF" size={22} />
+            <Pressable
+              onPress={() => router.push('/settings')}
+              style={({ pressed }) => [pressed && styles.bottomNavPressed]}
+              accessibilityRole="button"
+              accessibilityLabel="Settings">
+              <Settings color="#FFFFFF" size={22} />
+            </Pressable>
           </View>
         </View>
       </View>
@@ -518,6 +526,9 @@ const styles = StyleSheet.create({
   bottomNavIconWrapper: {
     flex: 1,
     alignItems: 'center',
+  },
+  bottomNavPressed: {
+    opacity: 0.75,
   },
   bottomNavIcon: {
     color: '#FFFFFF',
