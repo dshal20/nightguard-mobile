@@ -108,62 +108,37 @@ function uniqueFromVenueCount(activity: NotificationActivity[]): number {
   return ids.size;
 }
 
-type ActivityType = 'warning' | 'medical' | 'trespass';
+function humanizeType(t: string | undefined): string {
+  if (!t) return 'Activity';
+  return t
+    .toLowerCase()
+    .split('_')
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
+}
 
-type Activity = {
-  type: ActivityType;
-  title: string;
-  description: string;
-  time: string;
-  borderColor: string;
-  iconColor: string;
-};
+function activityVisual(
+  type: string | undefined,
+): { iconKind: 'medical' | 'alert'; borderColor: string; iconColor: string } {
+  const upper = String(type ?? '').toUpperCase();
+  if (upper.includes('MEDICAL')) {
+    return { iconKind: 'medical', borderColor: '#2B36CD', iconColor: '#7B8AF8' };
+  }
+  if (upper.includes('OFFENDER')) {
+    return { iconKind: 'alert', borderColor: '#DBA940', iconColor: '#E8BC5C' };
+  }
+  return { iconKind: 'alert', borderColor: '#E84868', iconColor: '#F07A92' };
+}
 
-const activities: Activity[] = [
-  {
-    type: 'warning',
-    title: 'Nearby Report',
-    description: 'Two patrons removed for fighting on 12th Street',
-    time: '2 min ago',
-    borderColor: '#E84868',
-    iconColor: '#F07A92',
-  },
-  {
-    type: 'medical',
-    title: 'Medical Emergency',
-    description: 'Medical emergency reported, 911 called',
-    time: '2 min ago',
-    borderColor: '#2B36CD',
-    iconColor: '#7B8AF8',
-  },
-  {
-    type: 'trespass',
-    title: 'Trespass Issued',
-    description: 'John Doe issued trespass at NG Downtown',
-    time: '2 min ago',
-    borderColor: '#DBA940',
-    iconColor: '#E8BC5C',
-  },
-  {
-    type: 'trespass',
-    title: 'Trespass Issued',
-    description: 'John Doe issued trespass at NG Downtown',
-    time: '2 min ago',
-    borderColor: '#DBA940',
-    iconColor: '#E8BC5C',
-  },
-  {
-    type: 'medical',
-    title: 'Medical Emergency',
-    description: 'Medical emergency reported, 911 called',
-    time: '2 min ago',
-    borderColor: '#2B36CD',
-    iconColor: '#7B8AF8',
-  },
-];
+function activitySubtitle(a: NotificationActivity): string {
+  if (a.fromVenueName?.trim()) return a.fromVenueName.trim();
+  if (a.fromVenueId != null) return `Venue ${a.fromVenueId}`;
+  return 'Unknown venue';
+}
 
-function ActivityIcon({ type, color }: { type: ActivityType; color: string }) {
-  if (type === 'medical') {
+function ActivityIcon({ kind, color }: { kind: 'medical' | 'alert'; color: string }) {
+  if (kind === 'medical') {
     return <Ambulance size={28} color={color} strokeWidth={2} />;
   }
   return <TriangleAlert size={28} color={color} strokeWidth={2} />;
@@ -213,6 +188,10 @@ export default function HomeScreen() {
   useFocusEffect(
     useCallback(() => {
       void loadDashboard();
+      const timer = setInterval(() => {
+        void loadDashboard();
+      }, 30000);
+      return () => clearInterval(timer);
     }, [loadDashboard]),
   );
 
@@ -240,6 +219,8 @@ export default function HomeScreen() {
     () => (dash ? latestActivityIso(dash.activity) : undefined),
     [dash],
   );
+  const liveActivity = useMemo(() => (dash ? dash.activity : []), [dash]);
+  const liveActivityInitialLoading = dashLoading && dash === null;
 
   const formatVal = (n: number | null) => {
     if (dashLoading) return '—';
@@ -399,34 +380,71 @@ export default function HomeScreen() {
           <View style={styles.liveActivityContainer}>
             <View style={styles.liveActivityHeaderRow}>
               <View>
-                <Text style={styles.sectionTitle}>Live Activity</Text>
+                <Text style={styles.liveActivityTitle}>Live Activity</Text>
+                <Text style={styles.liveActivityMeta}>
+                  {dashError
+                    ? 'Activity unavailable'
+                    : `${liveActivity.length} network event${liveActivity.length === 1 ? '' : 's'}`}
+                </Text>
               </View>
-              <View style={styles.filterButton}>
-                <Text style={styles.filterButtonText}>Filter</Text>
-              </View>
+              {liveActivityInitialLoading ? (
+                <ActivityIndicator size="small" color="#8B8B9D" />
+              ) : null}
             </View>
 
             <View style={styles.activityList}>
-              {activities.map((a, index) => (
-                <View
-                  key={index}
-                  style={[
-                    styles.activityItem,
-                    { borderLeftColor: a.borderColor },
-                  ]}
-                >
-                  <View style={styles.activityIconWrapperBox}>
-                    <ActivityIcon type={a.type} color={a.iconColor} />
-                  </View>
-                  <View style={styles.activityContent}>
-                    <View style={styles.activityHeaderRow}>
-                      <Text style={styles.activityTitle}>{a.title}</Text>
-                      <Text style={styles.activityTime}>{a.time}</Text>
-                    </View>
-                    <Text style={styles.activityDescription}>{a.description}</Text>
-                  </View>
+              {!liveActivityInitialLoading && dashError ? (
+                <View style={styles.activityStateRow}>
+                  <Text style={styles.activityStateErrorText}>Couldn’t load activity</Text>
+                  <Pressable
+                    style={({ pressed }) => [styles.retryBtnSmall, pressed && styles.newReportPressed]}
+                    onPress={() => void loadDashboard()}
+                    accessibilityRole="button"
+                    accessibilityLabel="Retry loading activity">
+                    <Text style={styles.retryBtnSmallLabel}>Retry</Text>
+                  </Pressable>
                 </View>
-              ))}
+              ) : null}
+
+              {!liveActivityInitialLoading && !dashError && liveActivity.length === 0 ? (
+                <View style={styles.activityEmptyWrap}>
+                  <Text style={styles.activityEmptyText}>No network activity yet</Text>
+                </View>
+              ) : null}
+
+              {!dashError &&
+                liveActivity.map((a, index) => {
+                  const v = activityVisual(a.type);
+                  return (
+                    <View
+                      key={a.id ?? `${a.createdAt ?? 'activity'}-${index}`}
+                      style={[styles.activityItem, { borderLeftColor: v.borderColor }]}>
+                      <View style={styles.activityIconWrapperBox}>
+                        <ActivityIcon kind={v.iconKind} color={v.iconColor} />
+                      </View>
+                      <View style={styles.activityContent}>
+                        <View style={styles.activityHeaderRow}>
+                          <View style={styles.activityTitleRow}>
+                            <Text style={styles.activityTitle}>{humanizeType(a.type)}</Text>
+                          </View>
+                          <Text style={styles.activityTime}>{formatRelativeTime(a.createdAt)}</Text>
+                        </View>
+                        <Text style={styles.activityDescription} numberOfLines={1}>
+                          {activitySubtitle(a)}
+                        </Text>
+                        {a.incident?.description ? (
+                          <Text style={styles.activityContextLine} numberOfLines={1}>
+                            {a.incident.description}
+                          </Text>
+                        ) : a.offender?.firstName || a.offender?.lastName ? (
+                          <Text style={styles.activityContextLine} numberOfLines={1}>
+                            {[a.offender?.firstName, a.offender?.lastName].filter(Boolean).join(' ')}
+                          </Text>
+                        ) : null}
+                      </View>
+                    </View>
+                  );
+                })}
             </View>
           </View>
         </ScrollView>
@@ -670,17 +688,31 @@ const styles = StyleSheet.create({
   sectionHeaderText: {},
   liveActivityContainer: {
     marginTop: 32,
-    borderRadius: 21,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: '#2A2A34',
     backgroundColor: '#11111B',
-    padding: 16,
+    paddingHorizontal: 14,
+    paddingTop: 14,
+    paddingBottom: 12,
   },
   liveActivityHeaderRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
     marginBottom: 12,
+  },
+  liveActivityTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    lineHeight: 22,
+  },
+  liveActivityMeta: {
+    marginTop: 2,
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#8B8B9D',
   },
   filterButton: {
     paddingHorizontal: 16,
@@ -695,19 +727,57 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#FFFFFF',
   },
+  activityStateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+    marginVertical: 8,
+  },
+  activityStateErrorText: {
+    color: '#F07A92',
+    fontSize: 12,
+    fontWeight: '600',
+    flex: 1,
+  },
+  retryBtnSmall: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#2A2A34',
+    backgroundColor: 'rgba(38, 38, 47, 0.48)',
+  },
+  retryBtnSmallLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  activityEmptyText: {
+    color: '#8B8B9D',
+    fontSize: 12,
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+  activityEmptyWrap: {
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
   activityList: {
-    gap: 8,
+    gap: 0,
   },
   activityItem: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     overflow: 'hidden',
     borderRadius: 10,
     backgroundColor: '#1B1B26',
     borderLeftWidth: 4,
+    minHeight: 64,
+    marginBottom: 8,
   },
   activityIconWrapperBox: {
-    width: 64,
+    width: 52,
     height: 64,
     justifyContent: 'center',
     alignItems: 'center',
@@ -715,29 +785,46 @@ const styles = StyleSheet.create({
   },
   activityContent: {
     flex: 1,
-    paddingVertical: 4,
-    paddingRight: 8,
+    paddingTop: 10,
+    paddingBottom: 8,
+    paddingRight: 10,
     justifyContent: 'center',
   },
   activityHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: 8,
+    marginBottom: 3,
+  },
+  activityTitleRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 2,
+    flexShrink: 1,
   },
   activityTitle: {
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '800',
     color: '#FFFFFF',
+    flexShrink: 1,
   },
   activityTime: {
-    fontSize: 8,
-    fontWeight: '500',
-    color: '#8B8B9D',
-  },
-  activityDescription: {
     fontSize: 10,
     fontWeight: '500',
     color: '#8B8B9D',
+    marginTop: 1,
+  },
+  activityDescription: {
+    fontSize: 11,
+    lineHeight: 15,
+    fontWeight: '500',
+    color: '#8B8B9D',
+  },
+  activityContextLine: {
+    marginTop: 2,
+    fontSize: 10,
+    lineHeight: 14,
+    fontWeight: '500',
+    color: '#6F6F82',
   },
 });

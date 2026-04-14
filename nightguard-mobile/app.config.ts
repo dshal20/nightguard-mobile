@@ -34,6 +34,13 @@ export default (): ExpoConfig => ({
   plugins: [
     'expo-router',
     [
+      'expo-camera',
+      {
+        cameraPermission: 'Allow NightGuard to access your camera to scan IDs.',
+        recordAudioAndroid: false,
+      },
+    ],
+    [
       'expo-splash-screen',
       {
         image: './assets/images/splash-icon.png',

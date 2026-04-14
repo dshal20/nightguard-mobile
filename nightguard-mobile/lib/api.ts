@@ -23,6 +23,40 @@ export type Venue = {
   inviteCode?: string;
 };
 
+export type CreatePatronLogRequest = {
+  firstName?: string | null;
+  lastName?: string | null;
+  middleName?: string | null;
+  driversLicenseId?: string | null;
+  dateOfBirth?: string | null;
+  expirationDate?: string | null;
+  state?: string | null;
+  streetAddress?: string | null;
+  city?: string | null;
+  postalCode?: string | null;
+  gender?: string | null;
+  eyeColor?: string | null;
+  decision: 'ADMITTED' | 'DENIED';
+};
+
+export type PatronLogResponse = {
+  id?: string;
+  venueId?: string;
+  firstName?: string;
+  lastName?: string;
+  driversLicenseId?: string;
+  dateOfBirth?: string;
+  expirationDate?: string;
+  state?: string;
+  streetAddress?: string;
+  city?: string;
+  postalCode?: string;
+  gender?: string;
+  eyeColor?: string;
+  createdAt?: string;
+};
+
+
 /**
  * GET `{API_BASE_URL}/users/me` with Firebase ID token.
  */
@@ -142,6 +176,38 @@ export async function getVenues(idToken: string): Promise<Venue[]> {
   }
 }
 
+/**
+ * POST `/venues/{id}/patron-log`
+ */
+export async function createPatronLog(
+  idToken: string,
+  venueId: string,
+  body: CreatePatronLogRequest,
+): Promise<PatronLogResponse> {
+  const base = getApiBaseUrl();
+  const res = await fetch(`${base}/venues/${encodeURIComponent(venueId)}/patron-log`, {
+    method: 'POST',
+    headers: {
+      ...authBearerHeaders(idToken),
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+  const text = await res.text();
+  const snippet = text.length > 280 ? `${text.slice(0, 280)}…` : text;
+  if (!res.ok) {
+    throw new Error(
+      `POST /venues/.../patron-log ${res.status} ${res.statusText}${snippet ? ` — ${snippet}` : ''}`,
+    );
+  }
+  try {
+    return (text ? JSON.parse(text) : {}) as PatronLogResponse;
+  } catch {
+    throw new Error(`POST /venues/.../patron-log: invalid JSON — ${snippet || '(empty)'}`);
+  }
+}
+
+
 // --- Dashboard (GET /incidents, capacity, headcount, notification activity) ---
 
 /** Optional nested reporter on `GET /incidents` items. */
@@ -221,7 +287,22 @@ export type VenueHeadcountResponse = {
 
 export type NotificationActivity = {
   id?: string;
+  type?: string;
   fromVenueId?: string | number;
+  fromVenueName?: string;
+  incident?: {
+    id?: string;
+    type?: string;
+    severity?: string;
+    status?: string;
+    description?: string;
+  } | null;
+  offender?: {
+    id?: string;
+    firstName?: string;
+    lastName?: string;
+    physicalMarkers?: string;
+  } | null;
   createdAt?: string;
 };
 

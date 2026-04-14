@@ -210,6 +210,18 @@ export default function SettingsScreen() {
         {!loading && !error ? (
           <>
             <View style={styles.card}>
+              <Text style={styles.cardTitle}>ID Scanner</Text>
+              <Text style={styles.cardHint}>Scan government-issued ID</Text>
+              <Pressable
+                style={({ pressed }) => [styles.changePhotoBtn, pressed && styles.pressed]}
+                onPress={() => router.push('/id-scanner')}
+                accessibilityRole="button"
+                accessibilityLabel="Open ID Scanner">
+                <Text style={styles.changePhotoLabel}>Open ID Scanner</Text>
+              </Pressable>
+            </View>
+
+            <View style={styles.card}>
               <Text style={styles.cardTitle}>Profile Photo</Text>
               <Text style={styles.cardHint}>Used across incident reports and account screens.</Text>
               <View style={styles.avatarRow}>
