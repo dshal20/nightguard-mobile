@@ -1,4 +1,5 @@
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -28,12 +29,28 @@ const C = {
   backdrop: 'rgba(0,0,0,0.55)',
 };
 
+export type AddOffenderFormValues = {
+  firstName: string;
+  lastName: string;
+  physicalMarkers?: string;
+  notes?: string;
+};
+
 type Props = {
   visible: boolean;
   onClose: () => void;
+  onSubmit: (values: AddOffenderFormValues) => Promise<void>;
+  submitting?: boolean;
+  submitError?: string | null;
 };
 
-export function AddOffenderSheet({ visible, onClose }: Props) {
+export function AddOffenderSheet({
+  visible,
+  onClose,
+  onSubmit,
+  submitting = false,
+  submitError = null,
+}: Props) {
   const insets = useSafeAreaInsets();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -41,11 +58,22 @@ export function AddOffenderSheet({ visible, onClose }: Props) {
   const [notes, setNotes] = useState('');
 
   const resetAndClose = () => {
+    if (submitting) return;
     setFirstName('');
     setLastName('');
     setPhysicalMarkers('');
     setNotes('');
     onClose();
+  };
+
+  const handleSubmit = async () => {
+    if (submitting) return;
+    await onSubmit({
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      physicalMarkers: physicalMarkers.trim() || undefined,
+      notes: notes.trim() || undefined,
+    });
   };
 
   return (
@@ -56,7 +84,12 @@ export function AddOffenderSheet({ visible, onClose }: Props) {
       onRequestClose={resetAndClose}
       statusBarTranslucent>
       <View style={styles.wrap}>
-        <Pressable style={styles.backdrop} onPress={resetAndClose} accessibilityLabel="Dismiss" />
+        <Pressable
+          style={styles.backdrop}
+          onPress={resetAndClose}
+          accessibilityLabel="Dismiss"
+          disabled={submitting}
+        />
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={styles.sheetKeyboard}>
@@ -87,6 +120,7 @@ export function AddOffenderSheet({ visible, onClose }: Props) {
                     onChangeText={setFirstName}
                     placeholder="First"
                     placeholderTextColor={C.placeholder}
+                    editable={!submitting}
                   />
                 </View>
                 <View style={styles.nameCol}>
@@ -97,6 +131,7 @@ export function AddOffenderSheet({ visible, onClose }: Props) {
                     onChangeText={setLastName}
                     placeholder="Last"
                     placeholderTextColor={C.placeholder}
+                    editable={!submitting}
                   />
                 </View>
               </View>
@@ -109,6 +144,7 @@ export function AddOffenderSheet({ visible, onClose }: Props) {
                   onChangeText={setPhysicalMarkers}
                   placeholder="e.g. tattoo on left arm, red jacket, 6ft tall"
                   placeholderTextColor={C.placeholder}
+                  editable={!submitting}
                 />
               </View>
 
@@ -122,6 +158,7 @@ export function AddOffenderSheet({ visible, onClose }: Props) {
                   placeholderTextColor={C.placeholder}
                   multiline
                   textAlignVertical="top"
+                  editable={!submitting}
                 />
               </View>
 
@@ -134,8 +171,23 @@ export function AddOffenderSheet({ visible, onClose }: Props) {
                 </Pressable>
               </View>
 
-              <Pressable style={({ pressed }) => [styles.saveBtn, pressed && styles.pressed]} onPress={resetAndClose}>
-                <Text style={styles.saveBtnText}>Save Offender</Text>
+              {submitError ? <Text style={styles.errorText}>{submitError}</Text> : null}
+
+              <Pressable
+                style={({ pressed }) => [
+                  styles.saveBtn,
+                  pressed && styles.pressed,
+                  submitting && styles.disabledBtn,
+                ]}
+                onPress={() => void handleSubmit()}
+                disabled={submitting}
+                accessibilityRole="button"
+                accessibilityLabel="Save offender">
+                {submitting ? (
+                  <ActivityIndicator size="small" color={C.text} />
+                ) : (
+                  <Text style={styles.saveBtnText}>Save Offender</Text>
+                )}
               </Pressable>
 
               <Pressable style={styles.linkHit} onPress={() => {}} accessibilityRole="button">
@@ -283,10 +335,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 12,
   },
+  disabledBtn: {
+    opacity: 0.7,
+  },
   saveBtnText: {
     fontSize: 12,
     fontWeight: '700',
     color: C.text,
+  },
+  errorText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#F07A92',
+    marginBottom: 10,
   },
   linkHit: {
     paddingVertical: 12,

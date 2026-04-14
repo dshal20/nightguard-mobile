@@ -33,6 +33,12 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="shield.fill" color={color} />,
         }}
       />
+      <Tabs.Screen
+        name="offenders"
+        options={{
+          title: 'Offenders',
+        }}
+      />
     </Tabs>
   );
 }

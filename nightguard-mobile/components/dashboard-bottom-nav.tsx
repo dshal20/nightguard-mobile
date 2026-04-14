@@ -5,7 +5,7 @@ import { Home, Settings, ShieldAlert, User } from 'lucide-react-native';
 const ACTIVE = '#9D9FCF';
 const INACTIVE = '#FFFFFF';
 
-export type DashboardBottomNavActive = 'home' | 'incidents';
+export type DashboardBottomNavActive = 'home' | 'incidents' | 'offenders';
 
 type Props = {
   active: DashboardBottomNavActive;
@@ -50,9 +50,13 @@ export function DashboardBottomNav({ active, onNewReport }: Props) {
           </Pressable>
         </View>
         <View style={styles.slot}>
-          <View style={styles.slotHit}>
-            <User color={INACTIVE} size={22} />
-          </View>
+          <Pressable
+            onPress={() => router.push('/offenders')}
+            style={({ pressed }) => [styles.slotHit, pressed && styles.pressed]}
+            accessibilityRole="button"
+            accessibilityLabel="Offenders">
+            <User color={active === 'offenders' ? ACTIVE : INACTIVE} size={22} />
+          </Pressable>
         </View>
         <View style={styles.slot}>
           <Pressable
